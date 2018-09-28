@@ -1,0 +1,76 @@
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: steamsite
+  namespace: steam
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: steamsite
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                    - steamsite
+              topologyKey: "kubernetes.io/hostname"
+      hostNetwork: true
+      containers:
+      - name: steamsite
+        image: steamcache/steamcache-site-license:latest
+        resources:
+          limits:
+            memory: 512M
+        env:
+        - name: STEAM_CACHE_SIZE_GB
+          value: "0"
+        - name: STEAM_AUTHCODE_URL
+          value: http://10.99.96.117:8080
+        - name: STEAM_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: steamsite
+              key: STEAM_USERNAME
+        - name: STEAM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: steamsite
+              key: STEAM_PASSWORD
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: steamsite
+  namespace: steam
+spec:
+  clusterIP: 10.96.8.1
+  selector:
+    app: steamsite
+  ports:
+    - protocol: TCP
+      port: 3128
+      targetPort: 3128
+      name: steam-api
+    - protocol: TCP
+      port: 27036
+      targetPort: 27036
+      name: steam-broadcast-tcp
+    - protocol: UDP
+      port: 27036
+      targetPort: 27036
+      name: steam-broadcast-udp
+    - protocol: UDP
+      port: 27037
+      targetPort: 27037
+      name: steam-content-udp
+    - protocol: TCP
+      port: 27037
+      targetPort: 27037
+      name: steam-content-tcp

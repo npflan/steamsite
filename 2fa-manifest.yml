@@ -1,0 +1,53 @@
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: steamauthcode
+  namespace: steam
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: steamauthcode
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                    - steamauthcode
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: steamauthcode
+        image: steamcache/steamcache-authcode:latest
+        resources:
+          limits:
+            memory: 256M
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: authfile
+          mountPath: "/var/secrets"
+          readOnly: true
+      volumes:
+      - name: authfile
+        secret:
+          secretName: steamsite
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: steamauthcode
+  namespace: steam
+spec:
+  selector:
+    app: steamauthcode
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80
+      name: steam-2fa-api
